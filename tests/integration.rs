@@ -12,9 +12,9 @@ fn setup() {
 fn full(){
     setup();
 
-    let site = neo::site::Site::new(env::var("TEST_SITE").expect("TEST_SITE"),
-                                    env::var("TEST_PASSWORD").expect("TEST_PASSWORD"),
-                                    None);
+    let site = neo::Site::new(env::var("TEST_SITE").expect("TEST_SITE"),
+                              env::var("TEST_PASSWORD").expect("TEST_PASSWORD"),
+                              None);
 
     let info = site.info().expect("info falied");
     println!("Site: {}", info.sitename);
