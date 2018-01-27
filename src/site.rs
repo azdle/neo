@@ -1,7 +1,36 @@
 use reqwest;
 
-// Workaround for using serde on stable.
-include!(concat!(env!("OUT_DIR"), "/site.serde_types.rs"));
+#[derive(Serialize, Deserialize, Debug)]
+struct InfoResult {
+    result: String,
+    info: Info,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Info {
+    pub sitename: String,
+    pub views: i64,
+    pub hits: i64,
+    pub created_at: String,
+    pub last_updated: String,
+    pub domain: Option<String>,
+    pub tags: Vec<String>,
+    pub latest_ipfs_hash: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ListResult {
+    result: String,
+    files: Vec<File>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct File {
+    pub path: String,
+    pub is_directory: bool,
+    pub size: i64,
+    pub updated_at: String,
+}
 
 #[derive(Debug)]
 pub struct Site {
@@ -13,7 +42,7 @@ pub struct Site {
 
 impl Site {
     pub fn new(username: String, password: String, site: Option<String>) -> Site {
-        let client = reqwest::Client::new().expect("Couldn't create client");
+        let client = reqwest::Client::new();
 
         Site {
             username: username,
@@ -25,7 +54,6 @@ impl Site {
 
     pub fn info(&self) -> Result<Info, String> {
         use reqwest::header::{Authorization, Basic, UserAgent};
-        use reqwest::StatusCode;
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -34,12 +62,12 @@ impl Site {
 
         let mut response = self.client
             .get("https://neocities.org/api/info")
-            .header(UserAgent(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
+            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
 
-        if *response.status() == StatusCode::Ok {
+        if response.status().is_success() {
             let r: InfoResult = response.json().unwrap();
             Ok(r.info)
         } else {
@@ -49,7 +77,6 @@ impl Site {
 
     pub fn list(&self) -> Result<Vec<File>, String> {
         use reqwest::header::{Authorization, Basic};
-        use reqwest::StatusCode;
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -62,7 +89,7 @@ impl Site {
             .send()
             .expect("Failed to send request");
 
-        if *response.status() == StatusCode::Ok {
+        if response.status().is_success() {
             let r: ListResult = response.json().unwrap();
             Ok(r.files)
         } else {
@@ -72,7 +99,6 @@ impl Site {
 
     pub fn upload(&self, name: String, content: String) -> Result<(), String> {
         use reqwest::header::{Authorization, Basic};
-        use reqwest::StatusCode;
         use std::io::Read;
         use std::collections::HashMap;
 
@@ -93,13 +119,13 @@ impl Site {
 
         println!("{:?}", response);
 
-        if *response.status() == StatusCode::Ok {
+        if response.status().is_success() {
             Ok(())
         } else {
             let mut resp_body = String::new();
             response.read_to_string(&mut resp_body).unwrap();
             let error = format!("Bad Response on Upload: {:?}\n{}",
-                                *response.status(),
+                                response.status(),
                                 resp_body);
             Err(error)
         }
@@ -107,7 +133,6 @@ impl Site {
 
     pub fn delete(&self, files: Vec<String>) -> Result<(), String> {
         use reqwest::header::{Authorization, Basic};
-        use reqwest::StatusCode;
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -130,10 +155,10 @@ impl Site {
             .send()
             .expect("Failed to send request");
 
-        if *response.status() == StatusCode::Ok {
+        if response.status().is_success() {
             Ok(())
         } else {
-            let error = format!("Bad Response on Delete: {:?}", *response.status());
+            let error = format!("Bad Response on Delete: {:?}", response.status());
             Err(error)
         }
     }
