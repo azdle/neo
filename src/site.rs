@@ -77,7 +77,7 @@ impl Site {
     }
 
     pub fn list(&self) -> Result<Vec<File>, String> {
-        use reqwest::header::{Authorization, Basic};
+        use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -86,6 +86,7 @@ impl Site {
 
         let mut response = self.client
             .get("https://neocities.org/api/list")
+            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
@@ -99,7 +100,7 @@ impl Site {
     }
 
     pub fn upload(&self, name: String, path: PathBuf) -> Result<(), String> {
-        use reqwest::header::{Authorization, Basic};
+        use reqwest::header::{Authorization, Basic, UserAgent};
         use std::io::Read;
 
         let credentials = Basic {
@@ -112,6 +113,7 @@ impl Site {
 
         let mut response = self.client
             .post("https://neocities.org/api/upload")
+            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
             .header(Authorization(credentials))
             .multipart(form)
             .send()
@@ -132,7 +134,7 @@ impl Site {
     }
 
     pub fn delete(&self, files: Vec<String>) -> Result<(), String> {
-        use reqwest::header::{Authorization, Basic};
+        use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -151,6 +153,7 @@ impl Site {
 
         let response = self.client
             .post(&url)
+            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
