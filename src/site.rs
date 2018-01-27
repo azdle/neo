@@ -12,7 +12,7 @@ pub struct Info {
     pub views: i64,
     pub hits: i64,
     pub created_at: String,
-    pub last_updated: String,
+    pub last_updated: Option<String>,
     pub domain: Option<String>,
     pub tags: Vec<String>,
     pub latest_ipfs_hash: Option<String>,
