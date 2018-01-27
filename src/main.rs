@@ -17,6 +17,6 @@ fn main() {
         println!("  {}", file.path);
     }
 
-    site.upload("test.html".to_owned(), "asdf".to_owned()).expect("upload failed");
-    site.delete(vec!["neocities.png".to_owned()]).expect("delete failed");
+    site.upload("test.html".to_owned(), "./testfile.html".into()).expect("upload failed");
+    site.delete(vec!["test.html".to_owned()]).expect("delete failed");
 }

@@ -1,4 +1,5 @@
 use reqwest;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct InfoResult {
@@ -97,23 +98,22 @@ impl Site {
         }
     }
 
-    pub fn upload(&self, name: String, content: String) -> Result<(), String> {
+    pub fn upload(&self, name: String, path: PathBuf) -> Result<(), String> {
         use reqwest::header::{Authorization, Basic};
         use std::io::Read;
-        use std::collections::HashMap;
 
         let credentials = Basic {
             username: self.username.clone(),
             password: Some(self.password.clone()),
         };
 
-        let mut body = HashMap::new();
-        body.insert(name, content);
+        let form = reqwest::multipart::Form::new()
+            .file(name, path).unwrap();
 
         let mut response = self.client
             .post("https://neocities.org/api/upload")
             .header(Authorization(credentials))
-            .form(&body)
+            .multipart(form)
             .send()
             .expect("Failed to send request");
 
