@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "neo"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "reqwest 0.8.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
