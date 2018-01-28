@@ -38,7 +38,7 @@ fn run() -> Result<()> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
                           .version(env!("CARGO_PKG_VERSION"))
                           .author(env!("CARGO_PKG_AUTHORS"))
-                          .about(env!("CARGO_PKG_DESCRIPTION"))
+                          .about("CLI interface for managing Neocities websites (https://neocities.org)")
                           .arg(Arg::with_name("site")
                                .short("s")
                                .help("Set site name explicitly")
@@ -53,13 +53,13 @@ fn run() -> Result<()> {
                           .subcommand(SubCommand::with_name("list")
                                       .about("List site files"))
                           .subcommand(SubCommand::with_name("upload")
-                                      .about("Upload file")
+                                      .about("Upload file to site")
                                       .arg(Arg::with_name("PATH")
                                           .help("The local path of the file to upload")
                                           .required(true)
                                           .index(1)))
                           .subcommand(SubCommand::with_name("delete")
-                                      .about("Delete file")
+                                      .about("Delete file from site")
                                       .arg(Arg::with_name("FILE")
                                           .help("The remote file to delete")
                                           .required(true)
@@ -88,7 +88,7 @@ fn run() -> Result<()> {
             let file_str = matches.value_of("FILE").unwrap();
             println!("delete: {}", file_str);
         },
-        _                         => {},
+        _ => { println!("{}", matches.usage()) },
     }
 
     Ok(())
