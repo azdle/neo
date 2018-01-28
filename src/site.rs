@@ -6,9 +6,23 @@ use errors::*;
 const USER_AGENT: &'static str = concat!("neo/",  env!("CARGO_PKG_VERSION"));
 
 #[derive(Serialize, Deserialize, Debug)]
+enum ApiResult {
+    Info(InfoResult),
+    List(ListResult),
+    Error(ErrorResult),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct InfoResult {
     result: String,
     info: Info,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResult {
+    pub result: String,
+    pub error_type: String,
+    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -78,7 +92,11 @@ impl Site {
             let r: InfoResult = response.json().unwrap();
             Ok(r.info)
         } else {
-            Err(ErrorKind::UnexpectedResponse(response).into())
+            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
+            match r {
+                Ok(r) => Err(ErrorKind::ServerError(r).into()),
+                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+            }
         }
     }
 
@@ -102,7 +120,11 @@ impl Site {
             let r: ListResult = response.json().unwrap();
             Ok(r.files)
         } else {
-            Err(ErrorKind::UnexpectedResponse(response).into())
+            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
+            match r {
+                Ok(r) => Err(ErrorKind::ServerError(r).into()),
+                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+            }
         }
     }
 
@@ -118,7 +140,7 @@ impl Site {
         let form = reqwest::multipart::Form::new()
             .file(name, path).unwrap();
 
-        let response = self.client
+        let mut response = self.client
             .post("https://neocities.org/api/upload")
             .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
@@ -131,7 +153,11 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(ErrorKind::UnexpectedResponse(response).into())
+            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
+            match r {
+                Ok(r) => Err(ErrorKind::ServerError(r).into()),
+                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+            }
         }
     }
 
@@ -154,7 +180,7 @@ impl Site {
 
         let url = format!("https://neocities.org/api/delete?{}", query);
 
-        let response = self.client
+        let mut response = self.client
             .post(&url)
             .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
@@ -164,7 +190,11 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(ErrorKind::UnexpectedResponse(response).into())
+            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
+            match r {
+                Ok(r) => Err(ErrorKind::ServerError(r).into()),
+                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+            }
         }
     }
 }

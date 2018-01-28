@@ -23,6 +23,11 @@ pub mod errors {
                 description("unexpected network response")
                 display("unexpected response: '{}'", r.status())
             }
+
+            ServerError(r: ::site::ErrorResult) {
+                description("error status received from server")
+                display("[{}] {}", r.error_type, r.message)
+            }
         }
     }
 }
