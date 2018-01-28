@@ -74,8 +74,8 @@ fn run() -> Result<()> {
                                           .index(1)))
                           .get_matches();
 
-    let site = matches.value_of("site").unwrap();
-    debug!("site: {}", site);
+    let site_name = matches.value_of("site").unwrap();
+    debug!("site: {}", site_name);
 
     match matches.occurrences_of("verbose") {
         0 => warn!("Verbosity: WARN"),
