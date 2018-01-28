@@ -11,7 +11,11 @@ use clap::{Arg, App, SubCommand};
 
 // Note that this is different than the errors module in lib.rs
 mod errors {
-    error_chain!{}
+    error_chain!{
+        links {
+            Neo(::neo::errors::Error, ::neo::errors::ErrorKind);
+        }
+    }
 }
 
 use errors::*;
