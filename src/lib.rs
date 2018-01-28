@@ -12,7 +12,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate log;
 
-mod site;
+pub mod site;
 pub use site::Site;
 
 pub mod errors {

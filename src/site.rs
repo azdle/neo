@@ -51,42 +51,91 @@ pub struct File {
     pub updated_at: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Auth {
+    Password(Password),
+    Key(Key),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Key {
+    pub key: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Password {
+    pub user: String,
+    pub password: String,
+}
+
 #[derive(Debug)]
 pub struct Site {
-    username: String,
-    password: String,
-    site: Option<String>,
+    auth: Auth,
     client: reqwest::Client,
 }
 
 impl Site {
-    pub fn new(username: String, password: String, site: Option<String>) -> Site {
+    pub fn new(auth: Auth) -> Site {
         trace!("Site::new()");
         let client = reqwest::Client::new();
 
+        Site { auth, client }
+    }
+
+    pub fn with_key(key: String) -> Site {
+        trace!("Site::with_key()");
+        let client = reqwest::Client::new();
+
         Site {
-            username: username,
-            password: password,
-            site: site,
-            client: client,
+            auth: Auth::Key(Key {
+                key,
+            }),
+            client,
+        }
+    }
+
+    pub fn with_password(user: String, password: String) -> Site {
+        trace!("Site::with_password()");
+        let client = reqwest::Client::new();
+
+        Site {
+            auth: Auth::Password(Password {
+                user,
+                password,
+            }),
+            client,
         }
     }
 
     pub fn info(&self) -> Result<Info> {
         trace!("Site::info()");
-        use reqwest::header::{Authorization, Basic, UserAgent};
+        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
-        let credentials = Basic {
-            username: self.username.clone(),
-            password: Some(self.password.clone()),
+        let mut request = self.client.get("https://neocities.org/api/info");
+
+        request.header(UserAgent::new(USER_AGENT));
+
+        match self.auth {
+            Auth::Key(ref key) => {
+                debug!("auth with bearer token");
+                request.header( Authorization( Bearer { token: key.key.clone() }))
+            },
+            Auth::Password(ref password) => {
+                debug!("auth with password");
+                request.header( Authorization( Basic {
+                    username: password.user.clone(),
+                    password: Some(password.password.clone()),
+                 }))
+            },
         };
 
-        let mut response = self.client
-            .get("https://neocities.org/api/info")
-            .header(UserAgent::new(USER_AGENT))
-            .header(Authorization(credentials))
-            .send()
+        debug!("request: {:?}", request);
+
+        let mut response = request.send()
             .expect("Failed to send request");
+
+        debug!("response: {:?}", response);
+
 
         if response.status().is_success() {
             let r: InfoResult = response.json().unwrap();
@@ -102,19 +151,32 @@ impl Site {
 
     pub fn list(&self) -> Result<Vec<File>> {
         trace!("Site::list()");
-        use reqwest::header::{Authorization, Basic, UserAgent};
+        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
-        let credentials = Basic {
-            username: self.username.clone(),
-            password: Some(self.password.clone()),
+        let mut request = self.client.get("https://neocities.org/api/list");
+
+        request.header(UserAgent::new(USER_AGENT));
+
+        match self.auth {
+            Auth::Key(ref key) => {
+                debug!("auth with bearer token");
+                request.header( Authorization( Bearer { token: key.key.clone() }))
+            },
+            Auth::Password(ref password) => {
+                debug!("auth with password");
+                request.header( Authorization( Basic {
+                    username: password.user.clone(),
+                    password: Some(password.password.clone()),
+                 }))
+            },
         };
 
-        let mut response = self.client
-            .get("https://neocities.org/api/list")
-            .header(UserAgent::new(USER_AGENT))
-            .header(Authorization(credentials))
-            .send()
+        debug!("request: {:?}", request);
+
+        let mut response = request.send()
             .expect("Failed to send request");
+
+        debug!("response: {:?}", response);
 
         if response.status().is_success() {
             let r: ListResult = response.json().unwrap();
@@ -128,27 +190,43 @@ impl Site {
         }
     }
 
-    pub fn upload(&self, name: String, path: PathBuf) -> Result<()> {
+    pub fn upload(&self, path: String, file: PathBuf) -> Result<()> {
         trace!("Site::upload()");
-        use reqwest::header::{Authorization, Basic, UserAgent};
-
-        let credentials = Basic {
-            username: self.username.clone(),
-            password: Some(self.password.clone()),
-        };
+        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
         let form = reqwest::multipart::Form::new()
-            .file(name, path).unwrap();
+            .file(path, file).unwrap();
 
-        let mut response = self.client
-            .post("https://neocities.org/api/upload")
-            .header(UserAgent::new(USER_AGENT))
-            .header(Authorization(credentials))
-            .multipart(form)
-            .send()
+        let url = "https://neocities.org/api/upload";
+
+        let mut request = self.client.post(url);
+
+        request.header(UserAgent::new(USER_AGENT));
+
+        match self.auth {
+            Auth::Key(ref key) => {
+                debug!("auth with bearer token");
+                request.header( Authorization( Bearer { token: key.key.clone() }))
+            },
+            Auth::Password(ref password) => {
+                debug!("auth with password");
+                request.header( Authorization( Basic {
+                    username: password.user.clone(),
+                    password: Some(password.password.clone()),
+                 }))
+            },
+        };
+
+        request.multipart(form);
+
+        debug!("request: {:?}", request);
+
+        let mut response = request.send()
             .expect("Failed to send request");
 
-        debug!("{:?}", response);
+        debug!("response: {:?}", response);
+
+        debug!("response: {:?}", response);
 
         if response.status().is_success() {
             Ok(())
@@ -163,12 +241,7 @@ impl Site {
 
     pub fn delete(&self, files: Vec<String>) -> Result<()> {
         trace!("Site::delete()");
-        use reqwest::header::{Authorization, Basic, UserAgent};
-
-        let credentials = Basic {
-            username: self.username.clone(),
-            password: Some(self.password.clone()),
-        };
+        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
         let mut query = String::new();
 
@@ -180,12 +253,30 @@ impl Site {
 
         let url = format!("https://neocities.org/api/delete?{}", query);
 
-        let mut response = self.client
-            .post(&url)
-            .header(UserAgent::new(USER_AGENT))
-            .header(Authorization(credentials))
-            .send()
+        let mut request = self.client.post(&url);
+
+        request.header(UserAgent::new(USER_AGENT));
+
+        match self.auth {
+            Auth::Key(ref key) => {
+                debug!("auth with bearer token");
+                request.header( Authorization( Bearer { token: key.key.clone() }))
+            },
+            Auth::Password(ref password) => {
+                debug!("auth with password");
+                request.header( Authorization( Basic {
+                    username: password.user.clone(),
+                    password: Some(password.password.clone()),
+                 }))
+            },
+        };
+
+        debug!("request: {:?}", request);
+
+        let mut response = request.send()
             .expect("Failed to send request");
+
+        debug!("response: {:?}", response);
 
         if response.status().is_success() {
             Ok(())

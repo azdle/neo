@@ -15,9 +15,8 @@ fn setup() -> neo::Site {
         dotenv().ok();
     });
 
-    neo::Site::new(env::var("TEST_SITE").expect("TEST_SITE"),
-                   env::var("TEST_PASSWORD").expect("TEST_PASSWORD"),
-                   None)
+    neo::Site::with_password(env::var("TEST_SITE").expect("TEST_SITE"),
+                             env::var("TEST_PASSWORD").expect("TEST_PASSWORD"))
 }
 
 #[test]

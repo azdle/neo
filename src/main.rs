@@ -116,7 +116,7 @@ fn run() -> Result<()> {
         _ => println!("Don't be crazy"),
     }
 
-    let site_name = if let Some(site) = matches.value_of("site") {
+    let site = if let Some(site) = matches.value_of("site") {
         site.to_owned()
     } else if let Some(site) = default_site {
         site
@@ -127,41 +127,44 @@ fn run() -> Result<()> {
             panic!("no site")
         }
     };
-    debug!("site: {}", site_name);
+    debug!("site: {}", site);
 
-    let user = if let Some(user) = matches.value_of("user") {
-        Some(user.to_owned())
-    } else if let Some(site) = app_config.sites.get(&site_name) {
-        site.user.to_owned()
-    } else {
-        // NOTE: I'm unsure if I want to prompt for user.
-        if true {
-            None
-        } else if let Ok(user) = rprompt::prompt_reply_stdout("user: ") {
-            debug!("got {}", user);
-            Some(user)
-        } else {
-            None
+    let auth = if let Some(password) = matches.value_of("password") {
+        neo::site::Auth::Password(
+            neo::site::Password{
+                user: site.clone(),
+                password: password.to_owned()
+            }
+        )
+    } else if let Some(auth) = app_config.sites.get(&site) {
+        match auth {
+            &config::Auth::Password(ref password) => {
+                neo::site::Auth::Password(
+                    neo::site::Password{
+                        user: site.clone(),
+                        password: password.password.to_owned()
+                    }
+                )
+            },
+            &config::Auth::Key(ref key) => {
+                neo::site::Auth::Key(
+                    neo::site::Key { key: key.key.to_owned() }
+                )
+            },
         }
+    } else {
+        panic!("unimplemented");
+        //debug!("will prompt for password");
+        //if let Ok(password) = rpassword::prompt_password_stdout("password: *typing not shown*") {
+        //    debug!("got {}", password);
+        //    Ok(password)
+        //} else {
+        //    Err("needs password")
+        //}
     };
-    debug!("user: {}", user.unwrap_or("*site is user*".to_owned()));
+    debug!("auth: {:?}", auth);
 
-    let site_password = if let Some(password) = matches.value_of("password") {
-        Ok(password.to_owned())
-    } else if let Some(site) = app_config.sites.get(&site_name) {
-        Ok(site.password.to_owned())
-    } else {
-        debug!("will prompt for password");
-        if let Ok(password) = rpassword::prompt_password_stdout("password: ") {
-            debug!("got {}", password);
-            Ok(password)
-        } else {
-            Err("needs password")
-        }
-    }?;
-    debug!("password: {}", site_password);
-
-    let site = neo::Site::new(site_name.to_owned(), site_password.to_owned(), None);
+    let site = neo::Site::new(auth);
 
     match matches.subcommand() {
         ("info", _) => {
@@ -186,15 +189,24 @@ fn run() -> Result<()> {
 pub mod config {
     use std::collections::BTreeMap;
     #[derive(Deserialize, Debug)]
-    pub struct SiteAuth {
+    #[serde(untagged)]
+    pub enum Auth {
+        Key(Key),
+        Password(Password),
+    }
+    #[derive(Deserialize, Debug)]
+    pub struct Key {
+        pub key: String,
+    }
+    #[derive(Deserialize, Debug)]
+    pub struct Password {
         pub password: String,
-        pub user: Option<String>,
     }
 
     #[derive(Deserialize, Debug)]
     pub struct Config {
         pub default_site: Option<String>,
-        pub sites: BTreeMap<String, SiteAuth>,
+        pub sites: BTreeMap<String, Auth>,
     }
 
     impl Config {
@@ -216,7 +228,7 @@ pub mod config {
 
             let mut local_config_path = PathBuf::from(".").canonicalize().unwrap();
             local_config_path.push("Neo.toml"); // push initial filename
-            while {
+            while { // this is a "do {} while ()" loop.
                 let config_path_attempt = PathBuf::from(&local_config_path).with_file_name("Neo.toml");
                 trace!("Checking {}.", config_path_attempt.to_string_lossy());
                 if config_path_attempt.exists() {
