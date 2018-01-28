@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use errors::*;
 
+const USER_AGENT: &'static str = concat!("neo/",  env!("CARGO_PKG_VERSION"));
+
 #[derive(Serialize, Deserialize, Debug)]
 struct InfoResult {
     result: String,
@@ -65,7 +67,7 @@ impl Site {
 
         let mut response = self.client
             .get("https://neocities.org/api/info")
-            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
+            .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
@@ -88,7 +90,7 @@ impl Site {
 
         let mut response = self.client
             .get("https://neocities.org/api/list")
-            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
+            .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
@@ -114,7 +116,7 @@ impl Site {
 
         let response = self.client
             .post("https://neocities.org/api/upload")
-            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
+            .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
             .multipart(form)
             .send()
@@ -149,7 +151,7 @@ impl Site {
 
         let response = self.client
             .post(&url)
-            .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
+            .header(UserAgent::new(USER_AGENT))
             .header(Authorization(credentials))
             .send()
             .expect("Failed to send request");
