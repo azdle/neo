@@ -95,7 +95,8 @@ fn run() -> Result<()> {
                           .subcommand(SubCommand::with_name("info")
                                       .about("Fetch site info"))
                           .subcommand(SubCommand::with_name("list")
-                                      .about("List site files"))
+                                      .about("List site files")
+                                      .alias("ls"))
                           .subcommand(SubCommand::with_name("upload")
                                       .about("Upload file to site")
                                       .arg(Arg::with_name("PATH")
@@ -180,7 +181,10 @@ fn run() -> Result<()> {
             let info = site.info()?;
             println!("{:?}", info);
         },
-        ("list", _) => {},
+        ("list", _) => {
+            let list = site.list()?;
+            println!("{:?}", list);
+        },
         ("upload", Some(matches)) => {
             let path_str = matches.value_of("PATH").unwrap();
             info!("upload: {}", path_str);
