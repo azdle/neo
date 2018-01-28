@@ -6,7 +6,15 @@ extern crate reqwest;
 extern crate clap;
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
+extern crate config as config_lib;
+extern crate app_dirs;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate rpassword;
+extern crate rprompt;
 
+use app_dirs::AppInfo;
 use clap::{Arg, App, SubCommand};
 
 // Note that this is different than the errors module in lib.rs
@@ -15,13 +23,22 @@ mod errors {
         links {
             Neo(::neo::errors::Error, ::neo::errors::ErrorKind);
         }
+
+        foreign_links {
+            Config(::config_lib::ConfigError);
+            AppDirs(::app_dirs::AppDirsError);
+        }
     }
 }
 
 use errors::*;
 
+const APP_INFO: AppInfo = AppInfo{name: "neo", author: "azdle"};
+
 fn main() {
     pretty_env_logger::init();
+
+    trace!("main() [neo]");
 
     if let Err(ref e) = run() {
         use std::io::Write;
@@ -43,6 +60,12 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+    trace!("run()");
+    let app_config = config::Config::build()?;
+    let default_site = app_config.default_site;
+
+    debug!("defualt site: {:?}", default_site);
+
     let matches = App::new(env!("CARGO_PKG_NAME"))
                           .version(env!("CARGO_PKG_VERSION"))
                           .author(env!("CARGO_PKG_AUTHORS"))
@@ -50,7 +73,17 @@ fn run() -> Result<()> {
                           .arg(Arg::with_name("site")
                                .short("s")
                                .help("Set site name explicitly")
-                               .required(true)
+                               .required(false)
+                               .takes_value(true))
+                          .arg(Arg::with_name("user")
+                               .short("u")
+                               .help("Set a username different from site name")
+                               .required(false)
+                               .takes_value(true))
+                          .arg(Arg::with_name("password")
+                               .short("p")
+                               .help("Provide password explicitly (will prompt if omitted)")
+                               .required(false)
                                .takes_value(true))
                           .arg(Arg::with_name("verbose")
                                .short("v")
@@ -74,9 +107,7 @@ fn run() -> Result<()> {
                                           .index(1)))
                           .get_matches();
 
-    let site_name = matches.value_of("site").unwrap();
-    debug!("site: {}", site_name);
-
+    // TODO: Set verbosity manually
     match matches.occurrences_of("verbose") {
         0 => warn!("Verbosity: WARN"),
         1 => info!("Verbosity: INFO"),
@@ -85,8 +116,58 @@ fn run() -> Result<()> {
         _ => println!("Don't be crazy"),
     }
 
+    let site_name = if let Some(site) = matches.value_of("site") {
+        site.to_owned()
+    } else if let Some(site) = default_site {
+        site
+    } else {
+        if let Ok(site) = rprompt::prompt_reply_stdout("site: ") {
+            site
+        } else {
+            panic!("no site")
+        }
+    };
+    debug!("site: {}", site_name);
+
+    let user = if let Some(user) = matches.value_of("user") {
+        Some(user.to_owned())
+    } else if let Some(site) = app_config.sites.get(&site_name) {
+        site.user.to_owned()
+    } else {
+        // NOTE: I'm unsure if I want to prompt for user.
+        if true {
+            None
+        } else if let Ok(user) = rprompt::prompt_reply_stdout("user: ") {
+            debug!("got {}", user);
+            Some(user)
+        } else {
+            None
+        }
+    };
+    debug!("user: {}", user.unwrap_or("*site is user*".to_owned()));
+
+    let site_password = if let Some(password) = matches.value_of("password") {
+        Ok(password.to_owned())
+    } else if let Some(site) = app_config.sites.get(&site_name) {
+        Ok(site.password.to_owned())
+    } else {
+        debug!("will prompt for password");
+        if let Ok(password) = rpassword::prompt_password_stdout("password: ") {
+            debug!("got {}", password);
+            Ok(password)
+        } else {
+            Err("needs password")
+        }
+    }?;
+    debug!("password: {}", site_password);
+
+    let site = neo::Site::new(site_name.to_owned(), site_password.to_owned(), None);
+
     match matches.subcommand() {
-        ("info", _) => {},
+        ("info", _) => {
+            let info = site.info()?;
+            println!("{:?}", info);
+        },
         ("list", _) => {},
         ("upload", Some(matches)) => {
             let path_str = matches.value_of("PATH").unwrap();
@@ -100,4 +181,58 @@ fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+pub mod config {
+    use std::collections::BTreeMap;
+    #[derive(Deserialize, Debug)]
+    pub struct SiteAuth {
+        pub password: String,
+        pub user: Option<String>,
+    }
+
+    #[derive(Deserialize, Debug)]
+    pub struct Config {
+        pub default_site: Option<String>,
+        pub sites: BTreeMap<String, SiteAuth>,
+    }
+
+    impl Config {
+        pub fn build() -> Result<Self, ::config_lib::ConfigError> {
+            use app_dirs::*;
+            use std::path::PathBuf;
+
+            trace!("Config::build()");
+
+            let mut s = ::config_lib::Config::new();
+
+            let global_config_path = {
+                let mut path = app_root(AppDataType::UserConfig, &super::APP_INFO).unwrap();
+                path.push("conf.toml");
+                path
+            };
+
+            s.merge(::config_lib::File::from(global_config_path).required(false))?;
+
+            let mut local_config_path = PathBuf::from(".").canonicalize().unwrap();
+            local_config_path.push("Neo.toml"); // push initial filename
+            while {
+                let config_path_attempt = PathBuf::from(&local_config_path).with_file_name("Neo.toml");
+                trace!("Checking {}.", config_path_attempt.to_string_lossy());
+                if config_path_attempt.exists() {
+                    info!("Found config file at {}", config_path_attempt.to_string_lossy());
+                    s.merge(::config_lib::File::with_name("Neo.toml").required(false))?;
+                    false // break
+                } else {
+                    local_config_path.pop()
+                }
+            } {}
+
+            // You can deserialize (and thus freeze) the entire configuration as
+            match s.try_into() {
+                Err(_) => Ok(Config { default_site: None, sites: BTreeMap::new() }),
+                c => c
+            }
+        }
+    }
 }
