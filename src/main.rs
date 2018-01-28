@@ -89,6 +89,9 @@ fn run() -> Result<()> {
                                .short("v")
                                .multiple(true)
                                .help("Sets the level of verbosity (max 4)"))
+                          .arg(Arg::with_name("no-interactive")
+                               .short("n")
+                               .help("Don't attempt to prompt for user or password, just fail"))
                           .subcommand(SubCommand::with_name("info")
                                       .about("Fetch site info"))
                           .subcommand(SubCommand::with_name("list")
@@ -116,10 +119,14 @@ fn run() -> Result<()> {
         _ => println!("Don't be crazy"),
     }
 
+    let no_interactive = matches.is_present("no-interactive");
+
     let site = if let Some(site) = matches.value_of("site") {
         site.to_owned()
     } else if let Some(site) = default_site {
         site
+    } else if no_interactive {
+        panic!("no site")
     } else {
         if let Ok(site) = rprompt::prompt_reply_stdout("site: ") {
             site
@@ -152,6 +159,8 @@ fn run() -> Result<()> {
                 )
             },
         }
+    } else if no_interactive {
+        panic!("no password")
     } else {
         panic!("unimplemented");
         //debug!("will prompt for password");
