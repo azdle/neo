@@ -4,6 +4,8 @@ extern crate error_chain;
 extern crate neo;
 extern crate reqwest;
 extern crate clap;
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
 
 use clap::{Arg, App, SubCommand};
 
@@ -15,6 +17,8 @@ mod errors {
 use errors::*;
 
 fn main() {
+    pretty_env_logger::init();
+
     if let Err(ref e) = run() {
         use std::io::Write;
         let stderr = &mut ::std::io::stderr();
@@ -67,13 +71,13 @@ fn run() -> Result<()> {
                           .get_matches();
 
     let site = matches.value_of("site").unwrap();
-    println!("site: {}", site);
+    debug!("site: {}", site);
 
     match matches.occurrences_of("verbose") {
-        0 => println!("Verbosity: WARN"),
-        1 => println!("Verbosity: INFO"),
-        2 => println!("Verbosity: DEBUG"),
-        3 => println!("Verbosity: TRACE"),
+        0 => warn!("Verbosity: WARN"),
+        1 => info!("Verbosity: INFO"),
+        2 => debug!("Verbosity: DEBUG"),
+        3 => trace!("Verbosity: TRACE"),
         _ => println!("Don't be crazy"),
     }
 
@@ -82,11 +86,11 @@ fn run() -> Result<()> {
         ("list", _) => {},
         ("upload", Some(matches)) => {
             let path_str = matches.value_of("PATH").unwrap();
-            println!("upload: {}", path_str);
+            info!("upload: {}", path_str);
         },
         ("delete", Some(matches)) => {
             let file_str = matches.value_of("FILE").unwrap();
-            println!("delete: {}", file_str);
+            info!("delete: {}", file_str);
         },
         _ => { println!("{}", matches.usage()) },
     }

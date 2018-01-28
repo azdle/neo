@@ -47,6 +47,7 @@ pub struct Site {
 
 impl Site {
     pub fn new(username: String, password: String, site: Option<String>) -> Site {
+        trace!("Site::new()");
         let client = reqwest::Client::new();
 
         Site {
@@ -58,6 +59,7 @@ impl Site {
     }
 
     pub fn info(&self) -> Result<Info> {
+        trace!("Site::info()");
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -81,6 +83,7 @@ impl Site {
     }
 
     pub fn list(&self) -> Result<Vec<File>> {
+        trace!("Site::list()");
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -104,6 +107,7 @@ impl Site {
     }
 
     pub fn upload(&self, name: String, path: PathBuf) -> Result<()> {
+        trace!("Site::upload()");
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -122,7 +126,7 @@ impl Site {
             .send()
             .expect("Failed to send request");
 
-        println!("{:?}", response);
+        debug!("{:?}", response);
 
         if response.status().is_success() {
             Ok(())
@@ -132,6 +136,7 @@ impl Site {
     }
 
     pub fn delete(&self, files: Vec<String>) -> Result<()> {
+        trace!("Site::delete()");
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
