@@ -1,6 +1,8 @@
 use reqwest;
 use std::path::PathBuf;
 
+use errors::*;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct InfoResult {
     result: String,
@@ -53,7 +55,7 @@ impl Site {
         }
     }
 
-    pub fn info(&self) -> Result<Info, String> {
+    pub fn info(&self) -> Result<Info> {
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -72,11 +74,11 @@ impl Site {
             let r: InfoResult = response.json().unwrap();
             Ok(r.info)
         } else {
-            Err("bad status response".to_owned())
+            Err(ErrorKind::UnexpectedResponse(response).into())
         }
     }
 
-    pub fn list(&self) -> Result<Vec<File>, String> {
+    pub fn list(&self) -> Result<Vec<File>> {
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -95,13 +97,12 @@ impl Site {
             let r: ListResult = response.json().unwrap();
             Ok(r.files)
         } else {
-            Err("bad status response".to_owned())
+            Err(ErrorKind::UnexpectedResponse(response).into())
         }
     }
 
-    pub fn upload(&self, name: String, path: PathBuf) -> Result<(), String> {
+    pub fn upload(&self, name: String, path: PathBuf) -> Result<()> {
         use reqwest::header::{Authorization, Basic, UserAgent};
-        use std::io::Read;
 
         let credentials = Basic {
             username: self.username.clone(),
@@ -111,7 +112,7 @@ impl Site {
         let form = reqwest::multipart::Form::new()
             .file(name, path).unwrap();
 
-        let mut response = self.client
+        let response = self.client
             .post("https://neocities.org/api/upload")
             .header(UserAgent::new(format!("neo/{}", env!("CARGO_PKG_VERSION"))))
             .header(Authorization(credentials))
@@ -124,16 +125,11 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            let mut resp_body = String::new();
-            response.read_to_string(&mut resp_body).unwrap();
-            let error = format!("Bad Response on Upload: {:?}\n{}",
-                                response.status(),
-                                resp_body);
-            Err(error)
+            Err(ErrorKind::UnexpectedResponse(response).into())
         }
     }
 
-    pub fn delete(&self, files: Vec<String>) -> Result<(), String> {
+    pub fn delete(&self, files: Vec<String>) -> Result<()> {
         use reqwest::header::{Authorization, Basic, UserAgent};
 
         let credentials = Basic {
@@ -161,8 +157,7 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            let error = format!("Bad Response on Delete: {:?}", response.status());
-            Err(error)
+            Err(ErrorKind::UnexpectedResponse(response).into())
         }
     }
 }
