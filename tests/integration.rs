@@ -1,11 +1,19 @@
 extern crate neo;
 extern crate dotenv;
+extern crate pretty_env_logger;
 
 use dotenv::dotenv;
 use std::env;
 
+use std::sync::{Once, ONCE_INIT};
+
+static INIT: Once = ONCE_INIT;
+
 fn setup() -> neo::Site {
-    dotenv().ok();
+    INIT.call_once(|| {
+        pretty_env_logger::init();
+        dotenv().ok();
+    });
 
     neo::Site::new(env::var("TEST_SITE").expect("TEST_SITE"),
                    env::var("TEST_PASSWORD").expect("TEST_PASSWORD"),
