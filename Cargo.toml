@@ -2,6 +2,7 @@
 name = "neo"
 version = "0.2.0"
 description = "API wrapper & CLI tool for Neocities"
+readme = "README.md"
 authors = ["Patrick Barrett <patrick@psbarrett.com>"]
 repository = "https://github.com/azdle/neo"
 license = "MIT/Apache-2.0"
