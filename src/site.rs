@@ -192,10 +192,15 @@ impl Site {
 
     pub fn upload(&self, path: String, file: PathBuf) -> Result<()> {
         trace!("Site::upload()");
+        debug!("path: {}", path);
+        debug!("file: {}", file.to_string_lossy());
         use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
+        let part = reqwest::multipart::Part::file(file).unwrap().file_name(path.clone());
         let form = reqwest::multipart::Form::new()
-            .file(path, file).unwrap();
+            .part(path, part);
+
+        debug!("form: {:?}", form);
 
         let url = "https://neocities.org/api/upload";
 
@@ -225,8 +230,7 @@ impl Site {
             .expect("Failed to send request");
 
         debug!("response: {:?}", response);
-
-        debug!("response: {:?}", response);
+        debug!("response: {}", response.text().unwrap_or("Err".to_owned()));
 
         if response.status().is_success() {
             Ok(())
