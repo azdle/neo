@@ -14,6 +14,8 @@ extern crate serde_derive;
 extern crate rpassword;
 extern crate rprompt;
 
+use std::path::{Path, PathBuf};
+
 use app_dirs::AppInfo;
 use clap::{Arg, App, SubCommand};
 
@@ -25,8 +27,10 @@ mod errors {
         }
 
         foreign_links {
+            Io(::std::io::Error);
             Config(::config_lib::ConfigError);
             AppDirs(::app_dirs::AppDirsError);
+            StripPrefix(::std::path::StripPrefixError);
         }
     }
 }
@@ -99,14 +103,19 @@ fn run() -> Result<()> {
                                       .alias("ls"))
                           .subcommand(SubCommand::with_name("upload")
                                       .about("Upload file to site")
-                                      .arg(Arg::with_name("PATH")
-                                          .help("The local path of the file to upload")
+                                      .arg(Arg::with_name("FILE")
+                                          .help("The local file to upload")
                                           .required(true)
-                                          .index(1)))
+                                          .index(1))
+                                      .arg(Arg::with_name("PATH")
+                                          .help("The remote path where the file is to be placed")
+                                          .required(false)
+                                          .index(2)))
                           .subcommand(SubCommand::with_name("delete")
                                       .about("Delete file from site")
-                                      .arg(Arg::with_name("FILE")
-                                          .help("The remote file to delete")
+                                      .alias("rm")
+                                      .arg(Arg::with_name("PATH")
+                                          .help("The path of the remote file to delete")
                                           .required(true)
                                           .index(1)))
                           .get_matches();
@@ -186,8 +195,25 @@ fn run() -> Result<()> {
             println!("{:?}", list);
         },
         ("upload", Some(matches)) => {
-            let path_str = matches.value_of("PATH").unwrap();
-            info!("upload: {}", path_str);
+            let root_path = { app_config.site_root.clone() };
+
+            let file_str = matches.value_of("FILE")
+                .expect("the required paramter file was somehow none");
+            let path_str = match matches.value_of("PATH").map(|s| s.to_owned() ) {
+                Some(s) => s,
+                None => {
+                    match root_path {
+                        Some(root_path) => {
+                            let rel_path = to_root_relative_path(root_path.as_str(), file_str)?;
+                            rel_path.to_str().map(|s| s.to_owned()).ok_or("invalid filename")?
+                        },
+                        None => file_str.to_owned()
+                    }
+                }
+            };
+
+            debug!("upload: {} to {}", file_str, path_str);
+            site.upload(path_str, file_str.into())?;
         },
         ("delete", Some(matches)) => {
             let file_str = matches.value_of("FILE").unwrap();
@@ -199,8 +225,22 @@ fn run() -> Result<()> {
     Ok(())
 }
 
+fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<PathBuf> {
+    let root_path = root_path.as_ref().canonicalize()?;
+    let file_path = file_path.as_ref().canonicalize()?;
+
+    debug!("root: {}", root_path.to_string_lossy());
+    debug!("file: {}", file_path.to_string_lossy());
+
+    let rel = file_path.strip_prefix(&root_path).map(|p| p.into()).map_err(|e| e.into());
+    debug!("relative path {:?}", rel);
+    rel
+}
+
 pub mod config {
     use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
     #[derive(Deserialize, Debug)]
     #[serde(untagged)]
     pub enum Auth {
@@ -218,6 +258,8 @@ pub mod config {
 
     #[derive(Deserialize, Debug)]
     pub struct Config {
+        // TODO: Why can't this be PathBuf?
+        pub site_root: Option<String>,
         pub default_site: Option<String>,
         pub sites: BTreeMap<String, Auth>,
     }
@@ -225,7 +267,6 @@ pub mod config {
     impl Config {
         pub fn build() -> Result<Self, ::config_lib::ConfigError> {
             use app_dirs::*;
-            use std::path::PathBuf;
 
             trace!("Config::build()");
 
@@ -246,16 +287,17 @@ pub mod config {
                 trace!("Checking {}.", config_path_attempt.to_string_lossy());
                 if config_path_attempt.exists() {
                     info!("Found config file at {}", config_path_attempt.to_string_lossy());
-                    s.merge(::config_lib::File::with_name("Neo.toml").required(false))?;
+                    s.merge(::config_lib::File::from(config_path_attempt).required(false))?;
+                    local_config_path.pop();
+                    s.set("site_root", Some(local_config_path.to_string_lossy().into_owned()))?;
                     false // break
                 } else {
                     local_config_path.pop()
                 }
             } {}
 
-            // You can deserialize (and thus freeze) the entire configuration as
             match s.try_into() {
-                Err(_) => Ok(Config { default_site: None, sites: BTreeMap::new() }),
+                Err(_) => Ok(Config { site_root: None, default_site: None, sites: BTreeMap::new() }),
                 c => c
             }
         }
