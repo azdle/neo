@@ -198,7 +198,7 @@ fn run() -> Result<()> {
             let root_path = { app_config.site_root.clone() };
 
             let file_str = matches.value_of("FILE")
-                .expect("the required paramter file was somehow none");
+                .expect("the required paramter FILE was somehow none");
             let path_str = match matches.value_of("PATH").map(|s| s.to_owned() ) {
                 Some(s) => s,
                 None => {
