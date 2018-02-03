@@ -216,8 +216,29 @@ fn run() -> Result<()> {
             site.upload(path_str, file_str.into())?;
         },
         ("delete", Some(matches)) => {
-            let file_str = matches.value_of("FILE").unwrap();
-            info!("delete: {}", file_str);
+            let root_path = { app_config.site_root.clone() };
+
+            let path_str = matches.value_of("PATH")
+                .expect("the required paramter PATH was somehow none");
+
+            info!("delete: {}", path_str);
+
+            let final_path = {
+                if path_str.starts_with(":") { // explicit path
+                    path_str.get(1..).unwrap_or("").to_owned()
+                } else {
+                    match root_path {
+                        Some(root_path) => {
+                            let rel_path = to_root_relative_path(root_path.as_str(), path_str)?;
+                            rel_path.to_str().map(|s| s.to_owned()).ok_or("invalid filename")?
+                        },
+                        None => path_str.to_owned(),
+                    }
+                }
+            };
+
+            info!("delete: {}", final_path);
+            site.delete(vec![final_path])?;
         },
         _ => { println!("{}", matches.usage()) },
     }
