@@ -19,9 +19,9 @@ pub mod errors {
     // Create the Error, ErrorKind, ResultExt, and Result types
     error_chain!{
         errors {
-            UnexpectedResponse(r: ::reqwest::Response) {
-                description("unexpected network response")
-                display("unexpected response: '{}'", r.status())
+            UnparseableError {
+                description("server responsed with error that could not be parsed")
+                display("unparseable response")
             }
 
             ServerError(r: ::site::ErrorResult) {
