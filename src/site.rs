@@ -49,7 +49,7 @@ struct ListResult {
 pub struct File {
     pub path: String,
     pub is_directory: bool,
-    pub size: i64,
+    pub size: Option<i64>,
     pub updated_at: String,
 }
 
