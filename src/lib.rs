@@ -17,7 +17,7 @@ pub use site::Site;
 
 pub mod errors {
     // Create the Error, ErrorKind, ResultExt, and Result types
-    error_chain!{
+    error_chain! {
         errors {
             UnparseableError {
                 description("server responsed with error that could not be parsed")
@@ -31,4 +31,3 @@ pub mod errors {
         }
     }
 }
-

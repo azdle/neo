@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use errors::*;
 
-const NEO_CLIENT_USER_AGENT: &'static str = concat!("neo/",  env!("CARGO_PKG_VERSION"));
+const NEO_CLIENT_USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ApiResult {
@@ -87,9 +87,7 @@ impl Site {
         let client = reqwest::blocking::Client::new();
 
         Site {
-            auth: Auth::Key(Key {
-                key,
-            }),
+            auth: Auth::Key(Key { key }),
             client,
         }
     }
@@ -99,10 +97,7 @@ impl Site {
         let client = reqwest::blocking::Client::new();
 
         Site {
-            auth: Auth::Password(Password {
-                user,
-                password,
-            }),
+            auth: Auth::Password(Password { user, password }),
             client,
         }
     }
@@ -119,20 +114,18 @@ impl Site {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
                 request = request.bearer_auth(key.key.clone())
-            },
+            }
             Auth::Password(ref password) => {
                 debug!("auth with password");
                 request = request.basic_auth(password.user.clone(), Some(password.password.clone()))
-            },
+            }
         };
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
-
 
         if response.status().is_success() {
             let r: InfoResult = response.json().unwrap();
@@ -158,17 +151,16 @@ impl Site {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
                 request = request.bearer_auth(key.key.clone())
-            },
+            }
             Auth::Password(ref password) => {
                 debug!("auth with password");
                 request = request.basic_auth(password.user.clone(), Some(password.password.clone()))
-            },
+            }
         };
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
 
@@ -190,9 +182,10 @@ impl Site {
         debug!("file: {}", file.to_string_lossy());
         use reqwest::header::USER_AGENT;
 
-        let part = reqwest::blocking::multipart::Part::file(file).unwrap().file_name(path.clone());
-        let form = reqwest::blocking::multipart::Form::new()
-            .part(path, part);
+        let part = reqwest::blocking::multipart::Part::file(file)
+            .unwrap()
+            .file_name(path.clone());
+        let form = reqwest::blocking::multipart::Form::new().part(path, part);
 
         debug!("form: {:?}", form);
 
@@ -206,19 +199,18 @@ impl Site {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
                 request = request.bearer_auth(key.key.clone())
-            },
+            }
             Auth::Password(ref password) => {
                 debug!("auth with password");
                 request = request.basic_auth(password.user.clone(), Some(password.password.clone()))
-            },
+            }
         };
 
         request = request.multipart(form);
 
         debug!("request: {:?}", &request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
 
@@ -255,17 +247,16 @@ impl Site {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
                 request = request.bearer_auth(key.key.clone())
-            },
+            }
             Auth::Password(ref password) => {
                 debug!("auth with password");
                 request = request.basic_auth(password.user.clone(), Some(password.password.clone()))
-            },
+            }
         };
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
 

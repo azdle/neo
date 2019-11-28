@@ -1,5 +1,5 @@
-extern crate neo;
 extern crate dotenv;
+extern crate neo;
 extern crate pretty_env_logger;
 
 use dotenv::dotenv;
@@ -15,12 +15,14 @@ fn setup() -> neo::Site {
         dotenv().ok();
     });
 
-    neo::Site::with_password(env::var("TEST_SITE").expect("TEST_SITE"),
-                             env::var("TEST_PASSWORD").expect("TEST_PASSWORD"))
+    neo::Site::with_password(
+        env::var("TEST_SITE").expect("TEST_SITE"),
+        env::var("TEST_PASSWORD").expect("TEST_PASSWORD"),
+    )
 }
 
 #[test]
-fn full(){
+fn full() {
     let site = setup();
 
     let info = site.info().expect("info falied");
@@ -32,13 +34,16 @@ fn full(){
         println!("  {}", file.path);
     }
 
-    site.upload("test.html".to_owned(), "tests/assets/testfile.html".into()).expect("upload failed");
-    site.delete(vec!["test.html".to_owned()]).expect("delete failed");
+    site.upload("test.html".to_owned(), "tests/assets/testfile.html".into())
+        .expect("upload failed");
+    site.delete(vec!["test.html".to_owned()])
+        .expect("delete failed");
 }
 
 #[test]
-fn upload_site_info(){
+fn upload_site_info() {
     let site = setup();
 
-    site.upload("index.html".to_owned(), "tests/assets/siteinfo.html".into()).expect("upload failed");
+    site.upload("index.html".to_owned(), "tests/assets/siteinfo.html".into())
+        .expect("upload failed");
 }
