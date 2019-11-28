@@ -2,16 +2,6 @@
 #[macro_use]
 extern crate error_chain;
 
-extern crate reqwest;
-
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-
-#[macro_use]
-extern crate log;
-
 pub mod site;
 pub use site::Site;
 
@@ -24,7 +14,7 @@ pub mod errors {
                 display("unparseable response")
             }
 
-            ServerError(r: ::site::ErrorResult) {
+            ServerError(r: crate::site::ErrorResult) {
                 description("error status received from server")
                 display("[{}] {}", r.error_type, r.message)
             }

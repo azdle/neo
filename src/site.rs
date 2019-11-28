@@ -1,7 +1,9 @@
+use log::{debug, trace};
 use reqwest;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use errors::*;
+use crate::errors::*;
 
 const NEO_CLIENT_USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 

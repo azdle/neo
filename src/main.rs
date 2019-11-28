@@ -1,24 +1,11 @@
 #![recursion_limit = "1024"]
 #[macro_use]
 extern crate error_chain;
-extern crate clap;
-extern crate neo;
-extern crate pretty_env_logger;
-extern crate reqwest;
-#[macro_use]
-extern crate log;
-extern crate app_dirs;
-extern crate config as config_lib;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate rpassword;
-extern crate rprompt;
-
-use std::path::{Path, PathBuf};
 
 use app_dirs::AppInfo;
 use clap::{App, Arg, SubCommand};
+use log::{debug, info, trace, warn};
+use std::path::{Path, PathBuf};
 
 // Note that this is different than the errors module in lib.rs
 mod errors {
@@ -28,10 +15,10 @@ mod errors {
         }
 
         foreign_links {
-            Io(::std::io::Error);
-            Config(::config_lib::ConfigError);
-            AppDirs(::app_dirs::AppDirsError);
-            StripPrefix(::std::path::StripPrefixError);
+            Io(std::io::Error);
+            Config(::config::ConfigError);
+            AppDirs(app_dirs::AppDirsError);
+            StripPrefix(std::path::StripPrefixError);
         }
     }
 }
@@ -288,6 +275,9 @@ fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<P
 }
 
 pub mod config {
+    use config;
+    use log::{info, trace};
+    use serde::Deserialize;
     use std::collections::BTreeMap;
     use std::path::PathBuf;
 
@@ -315,12 +305,12 @@ pub mod config {
     }
 
     impl Config {
-        pub fn build() -> Result<Self, ::config_lib::ConfigError> {
+        pub fn build() -> Result<Self, config::ConfigError> {
             use app_dirs::*;
 
             trace!("Config::build()");
 
-            let mut s = ::config_lib::Config::new();
+            let mut s = config::Config::new();
 
             let global_config_path = {
                 let mut path = app_root(AppDataType::UserConfig, &super::APP_INFO).unwrap();
@@ -328,7 +318,7 @@ pub mod config {
                 path
             };
 
-            s.merge(::config_lib::File::from(global_config_path).required(false))?;
+            s.merge(config::File::from(global_config_path).required(false))?;
 
             let mut local_config_path = PathBuf::from(".").canonicalize().unwrap();
             local_config_path.push("Neo.toml"); // push initial filename
@@ -342,7 +332,7 @@ pub mod config {
                         "Found config file at {}",
                         config_path_attempt.to_string_lossy()
                     );
-                    s.merge(::config_lib::File::from(config_path_attempt).required(false))?;
+                    s.merge(config::File::from(config_path_attempt).required(false))?;
                     local_config_path.pop();
                     s.set(
                         "site_root",
