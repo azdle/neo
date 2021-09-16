@@ -47,7 +47,7 @@ struct ListResult {
 pub struct File {
     pub path: String,
     pub is_directory: bool,
-    pub size: i64,
+    //pub size: i64,
     pub updated_at: String,
 }
 
@@ -71,21 +71,26 @@ pub struct Password {
 #[derive(Debug)]
 pub struct Site {
     auth: Auth,
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
 }
 
 impl Site {
     pub fn new(auth: Auth) -> Site {
         trace!("Site::new()");
-        let client = reqwest::Client::new();
+        let client = reqwest::blocking::Client::builder()
+            .user_agent(USER_AGENT)
+            .build()
+            .expect("build client with static user agent");
 
         Site { auth, client }
     }
 
     pub fn with_key(key: String) -> Site {
         trace!("Site::with_key()");
-        let client = reqwest::Client::new();
-
+        let client = reqwest::blocking::Client::builder()
+            .user_agent(USER_AGENT)
+            .build()
+            .expect("build client with static user agent");
         Site {
             auth: Auth::Key(Key {
                 key,
@@ -96,7 +101,10 @@ impl Site {
 
     pub fn with_password(user: String, password: String) -> Site {
         trace!("Site::with_password()");
-        let client = reqwest::Client::new();
+        let client = reqwest::blocking::Client::builder()
+            .user_agent(USER_AGENT)
+            .build()
+            .expect("build client with static user agent");
 
         Site {
             auth: Auth::Password(Password {
@@ -107,31 +115,30 @@ impl Site {
         }
     }
 
-    pub fn info(&self) -> Result<Info> {
-        trace!("Site::info()");
-        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
-
-        let mut request = self.client.get("https://neocities.org/api/info");
-
-        request.header(UserAgent::new(USER_AGENT));
-
+    fn set_auth(&self, request: reqwest::blocking::RequestBuilder) -> reqwest::blocking::RequestBuilder {
         match self.auth {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
-                request.header( Authorization( Bearer { token: key.key.clone() }))
+                request.bearer_auth(key.key.clone())
             },
             Auth::Password(ref password) => {
                 debug!("auth with password");
-                request.header( Authorization( Basic {
-                    username: password.user.clone(),
-                    password: Some(password.password.clone()),
-                 }))
+                request.basic_auth(
+                    password.user.clone(),
+                    Some(password.password.clone())
+                )
             },
-        };
+        }
+    }
+
+    pub fn info(&self) -> Result<Info> {
+        trace!("Site::info()");
+        let request = self.client.get("https://neocities.org/api/info");
+	let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let mut response = request.send()
+        let response = request.send()
             .expect("Failed to send request");
 
         debug!("response: {:?}", response);
@@ -144,36 +151,19 @@ impl Site {
             let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
             match r {
                 Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
             }
         }
     }
 
     pub fn list(&self) -> Result<Vec<File>> {
         trace!("Site::list()");
-        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
-
-        let mut request = self.client.get("https://neocities.org/api/list");
-
-        request.header(UserAgent::new(USER_AGENT));
-
-        match self.auth {
-            Auth::Key(ref key) => {
-                debug!("auth with bearer token");
-                request.header( Authorization( Bearer { token: key.key.clone() }))
-            },
-            Auth::Password(ref password) => {
-                debug!("auth with password");
-                request.header( Authorization( Basic {
-                    username: password.user.clone(),
-                    password: Some(password.password.clone()),
-                 }))
-            },
-        };
+        let request = self.client.get("https://neocities.org/api/list");
+	let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let mut response = request.send()
+        let response = request.send()
             .expect("Failed to send request");
 
         debug!("response: {:?}", response);
@@ -185,52 +175,44 @@ impl Site {
             let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
             match r {
                 Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
             }
         }
     }
 
     pub fn upload(&self, path: String, file: PathBuf) -> Result<()> {
+        use std::fs::File;
+        use std::io::Read;
         trace!("Site::upload()");
         debug!("path: {}", path);
         debug!("file: {}", file.to_string_lossy());
-        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
-        let part = reqwest::multipart::Part::file(file).unwrap().file_name(path.clone());
-        let form = reqwest::multipart::Form::new()
+	let mut file_contents = Vec::new();
+	let mut file = File::open(file).unwrap();
+	file.read_to_end(&mut file_contents).expect("read file to upload");
+
+	debug!("file contents length: {}", file_contents.len());
+
+        let part = reqwest::blocking::multipart::Part::bytes(file_contents).file_name(path.clone());
+        let form = reqwest::blocking::multipart::Form::new()
             .part(path, part);
 
         debug!("form: {:?}", form);
 
         let url = "https://neocities.org/api/upload";
 
-        let mut request = self.client.post(url);
+        let request = self.client.post(url);
+	let request = self.set_auth(request);
 
-        request.header(UserAgent::new(USER_AGENT));
-
-        match self.auth {
-            Auth::Key(ref key) => {
-                debug!("auth with bearer token");
-                request.header( Authorization( Bearer { token: key.key.clone() }))
-            },
-            Auth::Password(ref password) => {
-                debug!("auth with password");
-                request.header( Authorization( Basic {
-                    username: password.user.clone(),
-                    password: Some(password.password.clone()),
-                 }))
-            },
-        };
-
-        request.multipart(form);
+        let request = request.multipart(form);
 
         debug!("request: {:?}", request);
 
-        let mut response = request.send()
+        let response = request.send()
             .expect("Failed to send request");
 
         debug!("response: {:?}", response);
-        debug!("response: {}", response.text().unwrap_or("Err".to_owned()));
+        //debug!("response: {}", response.text().unwrap_or("Err".to_owned()));
 
         if response.status().is_success() {
             Ok(())
@@ -238,14 +220,13 @@ impl Site {
             let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
             match r {
                 Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
             }
         }
     }
 
     pub fn delete(&self, files: Vec<String>) -> Result<()> {
         trace!("Site::delete()");
-        use reqwest::header::{Authorization, Basic, Bearer, UserAgent};
 
         let mut query = String::new();
 
@@ -257,27 +238,12 @@ impl Site {
 
         let url = format!("https://neocities.org/api/delete?{}", query);
 
-        let mut request = self.client.post(&url);
-
-        request.header(UserAgent::new(USER_AGENT));
-
-        match self.auth {
-            Auth::Key(ref key) => {
-                debug!("auth with bearer token");
-                request.header( Authorization( Bearer { token: key.key.clone() }))
-            },
-            Auth::Password(ref password) => {
-                debug!("auth with password");
-                request.header( Authorization( Basic {
-                    username: password.user.clone(),
-                    password: Some(password.password.clone()),
-                 }))
-            },
-        };
+        let request = self.client.post(&url);
+	let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let mut response = request.send()
+        let response = request.send()
             .expect("Failed to send request");
 
         debug!("response: {:?}", response);
@@ -288,7 +254,7 @@ impl Site {
             let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
             match r {
                 Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                _ => Err(ErrorKind::UnexpectedResponse(response).into()),
+                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
             }
         }
     }
