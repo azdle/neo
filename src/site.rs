@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use errors::*;
 
-const USER_AGENT: &'static str = concat!("neo/",  env!("CARGO_PKG_VERSION"));
+const USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ApiResult {
@@ -92,9 +92,7 @@ impl Site {
             .build()
             .expect("build client with static user agent");
         Site {
-            auth: Auth::Key(Key {
-                key,
-            }),
+            auth: Auth::Key(Key { key }),
             client,
         }
     }
@@ -107,42 +105,37 @@ impl Site {
             .expect("build client with static user agent");
 
         Site {
-            auth: Auth::Password(Password {
-                user,
-                password,
-            }),
+            auth: Auth::Password(Password { user, password }),
             client,
         }
     }
 
-    fn set_auth(&self, request: reqwest::blocking::RequestBuilder) -> reqwest::blocking::RequestBuilder {
+    fn set_auth(
+        &self,
+        request: reqwest::blocking::RequestBuilder,
+    ) -> reqwest::blocking::RequestBuilder {
         match self.auth {
             Auth::Key(ref key) => {
                 debug!("auth with bearer token");
                 request.bearer_auth(key.key.clone())
-            },
+            }
             Auth::Password(ref password) => {
                 debug!("auth with password");
-                request.basic_auth(
-                    password.user.clone(),
-                    Some(password.password.clone())
-                )
-            },
+                request.basic_auth(password.user.clone(), Some(password.password.clone()))
+            }
         }
     }
 
     pub fn info(&self) -> Result<Info> {
         trace!("Site::info()");
         let request = self.client.get("https://neocities.org/api/info");
-	let request = self.set_auth(request);
+        let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
-
 
         if response.status().is_success() {
             let r: InfoResult = response.json().unwrap();
@@ -159,12 +152,11 @@ impl Site {
     pub fn list(&self) -> Result<Vec<File>> {
         trace!("Site::list()");
         let request = self.client.get("https://neocities.org/api/list");
-	let request = self.set_auth(request);
+        let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
 
@@ -187,29 +179,28 @@ impl Site {
         debug!("path: {}", path);
         debug!("file: {}", file.to_string_lossy());
 
-	let mut file_contents = Vec::new();
-	let mut file = File::open(file).unwrap();
-	file.read_to_end(&mut file_contents).expect("read file to upload");
+        let mut file_contents = Vec::new();
+        let mut file = File::open(file).unwrap();
+        file.read_to_end(&mut file_contents)
+            .expect("read file to upload");
 
-	debug!("file contents length: {}", file_contents.len());
+        debug!("file contents length: {}", file_contents.len());
 
         let part = reqwest::blocking::multipart::Part::bytes(file_contents).file_name(path.clone());
-        let form = reqwest::blocking::multipart::Form::new()
-            .part(path, part);
+        let form = reqwest::blocking::multipart::Form::new().part(path, part);
 
         debug!("form: {:?}", form);
 
         let url = "https://neocities.org/api/upload";
 
         let request = self.client.post(url);
-	let request = self.set_auth(request);
+        let request = self.set_auth(request);
 
         let request = request.multipart(form);
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
         //debug!("response: {}", response.text().unwrap_or("Err".to_owned()));
@@ -239,12 +230,11 @@ impl Site {
         let url = format!("https://neocities.org/api/delete?{}", query);
 
         let request = self.client.post(&url);
-	let request = self.set_auth(request);
+        let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
 
-        let response = request.send()
-            .expect("Failed to send request");
+        let response = request.send().expect("Failed to send request");
 
         debug!("response: {:?}", response);
 

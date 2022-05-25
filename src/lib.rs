@@ -17,7 +17,7 @@ pub use site::Site;
 
 pub mod errors {
     // Create the Error, ErrorKind, ResultExt, and Result types
-    error_chain!{
+    error_chain! {
         errors {
             UnexpectedResponse(r: ::reqwest::Error) {
                 description("unexpected network response")
@@ -31,4 +31,3 @@ pub mod errors {
         }
     }
 }
-
