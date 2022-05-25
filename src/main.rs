@@ -1,5 +1,4 @@
 use anyhow::Context;
-use app_dirs::AppInfo;
 use clap::{App, Arg, SubCommand};
 use log::{debug, info, trace, warn};
 use std::path::{Path, PathBuf};
@@ -10,11 +9,6 @@ pub enum Error {
     #[error(transparent)]
     Reporable(#[from] anyhow::Error),
 }
-
-const APP_INFO: AppInfo = AppInfo {
-    name: "neo",
-    author: "azdle",
-};
 
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
@@ -246,6 +240,7 @@ fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<P
 }
 
 pub mod config {
+    use directories::ProjectDirs;
     use log::{info, trace};
     use serde::Deserialize;
     use std::collections::BTreeMap;
@@ -276,17 +271,14 @@ pub mod config {
 
     impl Config {
         pub fn build() -> Result<Self, config::ConfigError> {
-            use app_dirs::*;
-
             trace!("Config::build()");
 
             let mut s = config::Config::new();
 
-            let global_config_path = {
-                let mut path = app_root(AppDataType::UserConfig, &super::APP_INFO).unwrap();
-                path.push("conf.toml");
-                path
-            };
+            let global_config_path = ProjectDirs::from("net", "azdle", "neo")
+                .expect("build_paths")
+                .config_dir()
+                .with_file_name("conf.toml");
 
             s.merge(config::File::from(global_config_path).required(false))?;
 

@@ -18,7 +18,7 @@ clap = "2.29"
 log = "0.4"
 pretty_env_logger = "0.2"
 config = "0.8"
-app_dirs = "1.1"
+directories = "4.0"
 rpassword = "2.0"
 rprompt = "1.0"
 
