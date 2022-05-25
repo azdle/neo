@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::Error;
 
-const USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
+const USER_AGENT: &str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ApiResult {

@@ -114,29 +114,27 @@ fn main() -> Result<(), Error> {
         site
     } else if no_interactive {
         panic!("no site")
+    } else if let Ok(site) = rprompt::prompt_reply_stdout("site: ") {
+        site
     } else {
-        if let Ok(site) = rprompt::prompt_reply_stdout("site: ") {
-            site
-        } else {
-            panic!("no site")
-        }
+        panic!("no site")
     };
     debug!("site: {}", site);
 
     let auth = if let Some(password) = matches.value_of("password") {
         neo::site::Auth::Password(neo::site::Password {
-            user: site.clone(),
+            user: site,
             password: password.to_owned(),
         })
     } else if let Some(auth) = app_config.sites.get(&site) {
         match auth {
-            &config::Auth::Password(ref password) => {
+            config::Auth::Password(ref password) => {
                 neo::site::Auth::Password(neo::site::Password {
                     user: site.clone(),
                     password: password.password.to_owned(),
                 })
             }
-            &config::Auth::Key(ref key) => neo::site::Auth::Key(neo::site::Key {
+            config::Auth::Key(ref key) => neo::site::Auth::Key(neo::site::Key {
                 key: key.key.to_owned(),
             }),
         }
@@ -166,7 +164,7 @@ fn main() -> Result<(), Error> {
             println!("{:?}", list);
         }
         ("upload", Some(matches)) => {
-            let root_path = { app_config.site_root.clone() };
+            let root_path = { app_config.site_root };
 
             let file_str = matches
                 .value_of("FILE")
@@ -189,7 +187,7 @@ fn main() -> Result<(), Error> {
             site.upload(path_str, file_str.into()).context("upload")?;
         }
         ("delete", Some(matches)) => {
-            let root_path = { app_config.site_root.clone() };
+            let root_path = { app_config.site_root };
 
             let path_str = matches
                 .value_of("PATH")
@@ -198,7 +196,7 @@ fn main() -> Result<(), Error> {
             info!("delete: {}", path_str);
 
             let final_path = {
-                if path_str.starts_with(":") {
+                if path_str.starts_with(':') {
                     // explicit path
                     path_str.get(1..).unwrap_or("").to_owned()
                 } else {
