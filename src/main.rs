@@ -291,12 +291,12 @@ pub mod config {
     }
 
     impl Config {
-        pub fn build() -> Result<Self, ::config_lib::ConfigError> {
+        pub fn build() -> Result<Self, crate::config_lib::ConfigError> {
             use app_dirs::*;
 
             trace!("Config::build()");
 
-            let mut s = ::config_lib::Config::new();
+            let mut s = crate::config_lib::Config::new();
 
             let global_config_path = {
                 let mut path = app_root(AppDataType::UserConfig, &super::APP_INFO).unwrap();
@@ -304,7 +304,7 @@ pub mod config {
                 path
             };
 
-            s.merge(::config_lib::File::from(global_config_path).required(false))?;
+            s.merge(crate::config_lib::File::from(global_config_path).required(false))?;
 
             let mut local_config_path = PathBuf::from(".").canonicalize().unwrap();
             local_config_path.push("Neo.toml"); // push initial filename
@@ -318,7 +318,7 @@ pub mod config {
                         "Found config file at {}",
                         config_path_attempt.to_string_lossy()
                     );
-                    s.merge(::config_lib::File::from(config_path_attempt).required(false))?;
+                    s.merge(crate::config_lib::File::from(config_path_attempt).required(false))?;
                     local_config_path.pop();
                     s.set(
                         "site_root",

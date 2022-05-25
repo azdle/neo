@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context};
 use reqwest;
 use std::path::PathBuf;
 
-use Error;
+use crate::Error;
 
 const USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 

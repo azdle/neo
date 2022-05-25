@@ -12,7 +12,7 @@ extern crate serde_json;
 extern crate log;
 
 pub mod site;
-pub use site::Site;
+pub use crate::site::Site;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
