@@ -1,5 +1,7 @@
 use anyhow::{anyhow, Context};
+use log::{debug, trace};
 use reqwest;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 use crate::Error;
