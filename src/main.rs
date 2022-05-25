@@ -1,5 +1,5 @@
 use anyhow::Context;
-use clap::{App, Arg, SubCommand};
+use clap::{Arg, Command};
 use log::{debug, info, trace, warn};
 use std::path::{Path, PathBuf};
 
@@ -20,75 +20,72 @@ fn main() -> Result<(), Error> {
 
     debug!("defualt site: {:?}", default_site);
 
-    let matches = App::new(env!("CARGO_PKG_NAME"))
+    let matches = Command::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about("CLI interface for managing Neocities websites (https://neocities.org)")
         .arg(
-            Arg::with_name("site")
-                .short("s")
+            Arg::new("site")
+                .short('s')
                 .help("Set site name explicitly")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("user")
-                .short("u")
+            Arg::new("user")
+                .short('u')
                 .help("Set a username different from site name")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("password")
-                .short("p")
+            Arg::new("password")
+                .short('p')
                 .help("Provide password explicitly (will prompt if omitted)")
                 .required(false)
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("verbose")
-                .short("v")
-                .multiple(true)
+            Arg::new("verbose")
+                .short('v')
+                .multiple_occurrences(true)
                 .help("Sets the level of verbosity (max 4)"),
         )
         .arg(
-            Arg::with_name("no-interactive")
-                .short("n")
+            Arg::new("no-interactive")
+                .short('n')
                 .help("Don't attempt to prompt for user or password, just fail"),
         )
-        .subcommand(SubCommand::with_name("info").about("Fetch site info"))
+        .subcommand(Command::new("info").about("Fetch site info"))
+        .subcommand(Command::new("list").about("List site files").alias("ls"))
         .subcommand(
-            SubCommand::with_name("list")
-                .about("List site files")
-                .alias("ls"),
-        )
-        .subcommand(
-            SubCommand::with_name("upload")
+            Command::new("upload")
                 .about("Upload file to site")
                 .arg(
-                    Arg::with_name("FILE")
+                    Arg::new("FILE")
                         .help("The local file to upload")
                         .required(true)
                         .index(1),
                 )
                 .arg(
-                    Arg::with_name("PATH")
+                    Arg::new("PATH")
                         .help("The remote path where the file is to be placed")
                         .required(false)
                         .index(2),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("delete")
+            Command::new("delete")
                 .about("Delete file from site")
                 .alias("rm")
                 .arg(
-                    Arg::with_name("PATH")
+                    Arg::new("PATH")
                         .help("The path of the remote file to delete")
                         .required(true)
                         .index(1),
                 ),
         )
+        .subcommand_required(true)
         .get_matches();
 
     // TODO: Set verbosity manually
@@ -149,15 +146,15 @@ fn main() -> Result<(), Error> {
     let site = neo::Site::new(auth);
 
     match matches.subcommand() {
-        ("info", _) => {
+        Some(("info", _)) => {
             let info = site.info().context("list")?;
             println!("{:?}", info);
         }
-        ("list", _) => {
+        Some(("list", _)) => {
             let list = site.list().context("list")?;
             println!("{:?}", list);
         }
-        ("upload", Some(matches)) => {
+        Some(("upload", matches)) => {
             let root_path = { app_config.site_root };
 
             let file_str = matches
@@ -180,7 +177,7 @@ fn main() -> Result<(), Error> {
             debug!("upload: {} to {}", file_str, path_str);
             site.upload(path_str, file_str.into()).context("upload")?;
         }
-        ("delete", Some(matches)) => {
+        Some(("delete", matches)) => {
             let root_path = { app_config.site_root };
 
             let path_str = matches
@@ -211,7 +208,7 @@ fn main() -> Result<(), Error> {
             site.delete(vec![final_path]).context("delete")?;
         }
         _ => {
-            println!("{}", matches.usage())
+            unreachable!("clap allowed a subcommand we weren't able to handle");
         }
     }
 
