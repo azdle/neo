@@ -270,14 +270,14 @@ pub mod config {
         pub fn build() -> Result<Self, config::ConfigError> {
             trace!("Config::build()");
 
-            let mut s = config::Config::new();
+            let mut s = config::Config::builder();
 
             let global_config_path = ProjectDirs::from("net", "azdle", "neo")
                 .expect("build_paths")
                 .config_dir()
                 .with_file_name("conf.toml");
 
-            s.merge(config::File::from(global_config_path).required(false))?;
+            s = s.add_source(config::File::from(global_config_path).required(false));
 
             let mut local_config_path = PathBuf::from(".").canonicalize().unwrap();
             local_config_path.push("Neo.toml"); // push initial filename
@@ -291,9 +291,9 @@ pub mod config {
                         "Found config file at {}",
                         config_path_attempt.to_string_lossy()
                     );
-                    s.merge(config::File::from(config_path_attempt).required(false))?;
+                    s = s.add_source(config::File::from(config_path_attempt).required(false));
                     local_config_path.pop();
-                    s.set(
+                    s = s.set_override(
                         "site_root",
                         Some(local_config_path.to_string_lossy().into_owned()),
                     )?;
@@ -303,14 +303,11 @@ pub mod config {
                 }
             } {}
 
-            match s.try_into() {
-                Err(_) => Ok(Config {
-                    site_root: None,
-                    default_site: None,
-                    sites: BTreeMap::new(),
-                }),
-                c => c,
-            }
+            Ok(s.build()?.try_deserialize().unwrap_or_else(|_| Config {
+                site_root: None,
+                default_site: None,
+                sites: BTreeMap::new(),
+            }))
         }
     }
 }
