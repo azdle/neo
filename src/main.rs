@@ -1,10 +1,9 @@
-#![recursion_limit = "1024"]
-#[macro_use]
-extern crate error_chain;
+extern crate anyhow;
 extern crate clap;
 extern crate neo;
 extern crate pretty_env_logger;
 extern crate reqwest;
+extern crate thiserror;
 #[macro_use]
 extern crate log;
 extern crate app_dirs;
@@ -17,59 +16,28 @@ extern crate rprompt;
 
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use app_dirs::AppInfo;
 use clap::{App, Arg, SubCommand};
 
-// Note that this is different than the errors module in lib.rs
-mod errors {
-    error_chain! {
-        links {
-            Neo(::neo::errors::Error, ::neo::errors::ErrorKind);
-        }
-
-        foreign_links {
-            Io(::std::io::Error);
-            Config(::config_lib::ConfigError);
-            AppDirs(::app_dirs::AppDirsError);
-            StripPrefix(::std::path::StripPrefixError);
-        }
-    }
+// Note that this is different than the error enum in lib.rs
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    Reporable(#[from] anyhow::Error),
 }
-
-use errors::*;
 
 const APP_INFO: AppInfo = AppInfo {
     name: "neo",
     author: "azdle",
 };
 
-fn main() {
+fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
     trace!("main() [neo]");
 
-    if let Err(ref e) = run() {
-        use std::io::Write;
-        let stderr = &mut ::std::io::stderr();
-        let errmsg = "Error writing to stderr";
-
-        writeln!(stderr, "error: {}", e).expect(errmsg);
-
-        for e in e.iter().skip(1) {
-            writeln!(stderr, "caused by: {}", e).expect(errmsg);
-        }
-
-        if let Some(backtrace) = e.backtrace() {
-            writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
-        }
-
-        ::std::process::exit(1);
-    }
-}
-
-fn run() -> Result<()> {
-    trace!("run()");
-    let app_config = config::Config::build()?;
+    let app_config = config::Config::build().context("build config")?;
     let default_site = app_config.default_site;
 
     debug!("defualt site: {:?}", default_site);
@@ -206,11 +174,11 @@ fn run() -> Result<()> {
 
     match matches.subcommand() {
         ("info", _) => {
-            let info = site.info()?;
+            let info = site.info().context("list")?;
             println!("{:?}", info);
         }
         ("list", _) => {
-            let list = site.list()?;
+            let list = site.list().context("list")?;
             println!("{:?}", list);
         }
         ("upload", Some(matches)) => {
@@ -227,14 +195,14 @@ fn run() -> Result<()> {
                         rel_path
                             .to_str()
                             .map(|s| s.to_owned())
-                            .ok_or("invalid filename")?
+                            .context("invalid filename")?
                     }
                     None => file_str.to_owned(),
                 },
             };
 
             debug!("upload: {} to {}", file_str, path_str);
-            site.upload(path_str, file_str.into())?;
+            site.upload(path_str, file_str.into()).context("upload")?;
         }
         ("delete", Some(matches)) => {
             let root_path = { app_config.site_root.clone() };
@@ -256,7 +224,7 @@ fn run() -> Result<()> {
                             rel_path
                                 .to_str()
                                 .map(|s| s.to_owned())
-                                .ok_or("invalid filename")?
+                                .context("invalid filename")?
                         }
                         None => path_str.to_owned(),
                     }
@@ -264,7 +232,7 @@ fn run() -> Result<()> {
             };
 
             info!("delete: {}", final_path);
-            site.delete(vec![final_path])?;
+            site.delete(vec![final_path]).context("delete")?;
         }
         _ => {
             println!("{}", matches.usage())
@@ -274,9 +242,15 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<PathBuf> {
-    let root_path = root_path.as_ref().canonicalize()?;
-    let file_path = file_path.as_ref().canonicalize()?;
+fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<PathBuf, Error> {
+    let root_path = root_path
+        .as_ref()
+        .canonicalize()
+        .context("canonicalize root path")?;
+    let file_path = file_path
+        .as_ref()
+        .canonicalize()
+        .context("canonicalize root path")?;
 
     debug!("root: {}", root_path.to_string_lossy());
     debug!("file: {}", file_path.to_string_lossy());
@@ -284,9 +258,9 @@ fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<P
     let rel = file_path
         .strip_prefix(&root_path)
         .map(|p| p.into())
-        .map_err(|e| e.into());
+        .context("stip prefix")?;
     debug!("relative path {:?}", rel);
-    rel
+    Ok(rel)
 }
 
 pub mod config {

@@ -1,7 +1,8 @@
+use anyhow::{anyhow, Context};
 use reqwest;
 use std::path::PathBuf;
 
-use errors::*;
+use Error;
 
 const USER_AGENT: &'static str = concat!("neo/", env!("CARGO_PKG_VERSION"));
 
@@ -126,7 +127,7 @@ impl Site {
         }
     }
 
-    pub fn info(&self) -> Result<Info> {
+    pub fn info(&self) -> Result<Info, Error> {
         trace!("Site::info()");
         let request = self.client.get("https://neocities.org/api/info");
         let request = self.set_auth(request);
@@ -141,15 +142,12 @@ impl Site {
             let r: InfoResult = response.json().unwrap();
             Ok(r.info)
         } else {
-            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
-            match r {
-                Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
-            }
+            let r: ErrorResult = response.json().context("decode json error")?;
+            Err(anyhow!("{:?}", r).into())
         }
     }
 
-    pub fn list(&self) -> Result<Vec<File>> {
+    pub fn list(&self) -> Result<Vec<File>, Error> {
         trace!("Site::list()");
         let request = self.client.get("https://neocities.org/api/list");
         let request = self.set_auth(request);
@@ -164,15 +162,12 @@ impl Site {
             let r: ListResult = response.json().unwrap();
             Ok(r.files)
         } else {
-            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
-            match r {
-                Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
-            }
+            let r: ErrorResult = response.json().context("decode json error")?;
+            Err(anyhow!("{:?}", r).into())
         }
     }
 
-    pub fn upload(&self, path: String, file: PathBuf) -> Result<()> {
+    pub fn upload(&self, path: String, file: PathBuf) -> Result<(), Error> {
         use std::fs::File;
         use std::io::Read;
         trace!("Site::upload()");
@@ -208,15 +203,12 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
-            match r {
-                Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
-            }
+            let r: ErrorResult = response.json().context("decode json error")?;
+            Err(anyhow!("{:?}", r).into())
         }
     }
 
-    pub fn delete(&self, files: Vec<String>) -> Result<()> {
+    pub fn delete(&self, files: Vec<String>) -> Result<(), Error> {
         trace!("Site::delete()");
 
         let mut query = String::new();
@@ -241,11 +233,8 @@ impl Site {
         if response.status().is_success() {
             Ok(())
         } else {
-            let r: ::std::result::Result<ErrorResult, ::reqwest::Error> = response.json();
-            match r {
-                Ok(r) => Err(ErrorKind::ServerError(r).into()),
-                Err(e) => Err(ErrorKind::UnexpectedResponse(e).into()),
-            }
+            let r: ErrorResult = response.json().context("decode json error")?;
+            Err(anyhow!("{:?}", r).into())
         }
     }
 }

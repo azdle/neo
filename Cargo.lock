@@ -54,6 +54,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.57"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
+
+[[package]]
 name = "app_dirs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -229,7 +235,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f0e2bb24d163428d8031d3ebd2d2bd903ad933205a97d0f18c7c1aade380f3"
 dependencies = [
  "derive-error-chain",
- "error-chain 0.10.0",
+ "error-chain",
  "regex 0.2.11",
 ]
 
@@ -260,15 +266,6 @@ name = "error-chain"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9435d864e017c3c6afeac1654189b06cdb491cf2ff73dbf0d73b0f292f42ff8"
-dependencies = [
- "backtrace",
-]
-
-[[package]]
-name = "error-chain"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
 dependencies = [
  "backtrace",
 ]
@@ -676,11 +673,11 @@ dependencies = [
 name = "neo"
 version = "0.3.1"
 dependencies = [
+ "anyhow",
  "app_dirs",
  "clap",
  "config",
  "dotenv",
- "error-chain 0.11.0",
  "log",
  "pretty_env_logger",
  "reqwest",
@@ -689,6 +686,7 @@ dependencies = [
  "serde 1.0.137",
  "serde_derive",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]

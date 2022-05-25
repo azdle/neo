@@ -1,6 +1,5 @@
-#![recursion_limit = "1024"]
-#[macro_use]
-extern crate error_chain;
+extern crate anyhow;
+extern crate thiserror;
 
 extern crate reqwest;
 
@@ -15,19 +14,8 @@ extern crate log;
 pub mod site;
 pub use site::Site;
 
-pub mod errors {
-    // Create the Error, ErrorKind, ResultExt, and Result types
-    error_chain! {
-        errors {
-            UnexpectedResponse(r: ::reqwest::Error) {
-                description("unexpected network response")
-                display("unexpected response: '{}'", r)
-            }
-
-            ServerError(r: ::site::ErrorResult) {
-                description("error status received from server")
-                display("[{}] {}", r.error_type, r.message)
-            }
-        }
-    }
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
 }
