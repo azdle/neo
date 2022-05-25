@@ -5,9 +5,9 @@ extern crate pretty_env_logger;
 use dotenv::dotenv;
 use std::env;
 
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
-static INIT: Once = ONCE_INIT;
+static INIT: Once = Once::new();
 
 fn setup() -> neo::Site {
     INIT.call_once(|| {
