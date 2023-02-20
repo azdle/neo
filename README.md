@@ -25,7 +25,7 @@ Getting Started
 
 The usual way of using `neo` is to setup a `Neo.toml` at the root directory of
 your site. In this file you can put your site name and auth credentials, either
-your username an password or a site API key (see your site settings).
+your username and password or a site API key (see your site settings).
 
 Example `Neo.toml`:
 
