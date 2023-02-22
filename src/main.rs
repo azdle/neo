@@ -103,7 +103,7 @@ fn main() -> Result<(), Error> {
         site
     } else if no_interactive {
         panic!("no site")
-    } else if let Ok(site) = rprompt::prompt_reply_stdout("site: ") {
+    } else if let Ok(site) = rprompt::prompt_reply("site: ") {
         site
     } else {
         panic!("no site")
