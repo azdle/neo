@@ -1,5 +1,5 @@
 use anyhow::Context;
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use log::{debug, info, trace, warn};
 use std::path::{Path, PathBuf};
 
@@ -28,32 +28,30 @@ fn main() -> Result<(), Error> {
             Arg::new("site")
                 .short('s')
                 .help("Set site name explicitly")
-                .required(false)
-                .takes_value(true),
+                .required(false),
         )
         .arg(
             Arg::new("user")
                 .short('u')
                 .help("Set a username different from site name")
-                .required(false)
-                .takes_value(true),
+                .required(false),
         )
         .arg(
             Arg::new("password")
                 .short('p')
                 .help("Provide password explicitly (will prompt if omitted)")
-                .required(false)
-                .takes_value(true),
+                .required(false),
         )
         .arg(
             Arg::new("verbose")
                 .short('v')
-                .multiple_occurrences(true)
+                .action(ArgAction::Count)
                 .help("Sets the level of verbosity (max 4)"),
         )
         .arg(
             Arg::new("no-interactive")
                 .short('n')
+                .action(ArgAction::SetTrue)
                 .help("Don't attempt to prompt for user or password, just fail"),
         )
         .subcommand(Command::new("info").about("Fetch site info"))
@@ -89,7 +87,7 @@ fn main() -> Result<(), Error> {
         .get_matches();
 
     // TODO: Set verbosity manually
-    match matches.occurrences_of("verbose") {
+    match matches.get_count("verbose") {
         0 => warn!("Verbosity: WARN"),
         1 => info!("Verbosity: INFO"),
         2 => debug!("Verbosity: DEBUG"),
@@ -97,10 +95,10 @@ fn main() -> Result<(), Error> {
         _ => println!("Don't be crazy"),
     }
 
-    let no_interactive = matches.is_present("no-interactive");
+    let no_interactive = matches.get_flag("no-interactive");
 
-    let site = if let Some(site) = matches.value_of("site") {
-        site.to_owned()
+    let site = if let Some(site) = matches.get_one::<&str>("site") {
+        site.to_string()
     } else if let Some(site) = default_site {
         site
     } else if no_interactive {
@@ -112,10 +110,10 @@ fn main() -> Result<(), Error> {
     };
     debug!("site: {}", site);
 
-    let auth = if let Some(password) = matches.value_of("password") {
+    let auth = if let Some(password) = matches.get_one::<&str>("password") {
         neo::site::Auth::Password(neo::site::Password {
             user: site,
-            password: password.to_owned(),
+            password: password.to_string(),
         })
     } else if let Some(auth) = app_config.sites.get(&site) {
         match auth {
@@ -158,19 +156,19 @@ fn main() -> Result<(), Error> {
             let root_path = { app_config.site_root };
 
             let file_str = matches
-                .value_of("FILE")
+                .get_one::<&str>("FILE")
                 .expect("the required paramter FILE was somehow none");
-            let path_str = match matches.value_of("PATH").map(|s| s.to_owned()) {
-                Some(s) => s,
+            let path_str = match matches.get_one::<&str>("PATH") {
+                Some(s) => s.to_string(),
                 None => match root_path {
                     Some(root_path) => {
                         let rel_path = to_root_relative_path(root_path.as_str(), file_str)?;
                         rel_path
                             .to_str()
-                            .map(|s| s.to_owned())
+                            .map(|s| s.to_string())
                             .context("invalid filename")?
                     }
-                    None => file_str.to_owned(),
+                    None => file_str.to_string(),
                 },
             };
 
@@ -181,7 +179,7 @@ fn main() -> Result<(), Error> {
             let root_path = { app_config.site_root };
 
             let path_str = matches
-                .value_of("PATH")
+                .get_one::<&str>("PATH")
                 .expect("the required paramter PATH was somehow none");
 
             info!("delete: {}", path_str);
@@ -193,13 +191,13 @@ fn main() -> Result<(), Error> {
                 } else {
                     match root_path {
                         Some(root_path) => {
-                            let rel_path = to_root_relative_path(root_path.as_str(), path_str)?;
+                            let rel_path = to_root_relative_path(root_path, path_str)?;
                             rel_path
                                 .to_str()
-                                .map(|s| s.to_owned())
+                                .map(|s| s.to_string())
                                 .context("invalid filename")?
                         }
-                        None => path_str.to_owned(),
+                        None => path_str.to_string(),
                     }
                 }
             };
@@ -215,7 +213,10 @@ fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn to_root_relative_path<P: AsRef<Path>>(root_path: P, file_path: P) -> Result<PathBuf, Error> {
+fn to_root_relative_path<P1: AsRef<Path>, P2: AsRef<Path>>(
+    root_path: P1,
+    file_path: P2,
+) -> Result<PathBuf, Error> {
     let root_path = root_path
         .as_ref()
         .canonicalize()
