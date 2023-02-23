@@ -1,6 +1,6 @@
 [package]
 name = "neo"
-version = "0.3.1"
+version = "0.3.2"
 description = "API wrapper & CLI tool for Neocities"
 readme = "README.md"
 authors = ["Patrick Barrett <patrick@psbarrett.com>"]
