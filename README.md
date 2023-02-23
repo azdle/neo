@@ -1,9 +1,6 @@
 neo
 ===
 
-[![Build Status](https://travis-ci.org/azdle/neo.svg?branch=master)](https://travis-ci.org/azdle/neo)
-[![Crates.io Link](http://meritbadge.herokuapp.com/neo)](https://crates.io/crates/neo)
-
 `neo` is a simple command line client for [Neocities](http://neocities.org).
 
 Status
