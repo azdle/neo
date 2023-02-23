@@ -223,7 +223,7 @@ impl Site {
 
         let url = format!("https://neocities.org/api/delete?{}", query);
 
-        let request = self.client.post(&url);
+        let request = self.client.post(url);
         let request = self.set_auth(request);
 
         debug!("request: {:?}", request);
