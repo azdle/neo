@@ -97,7 +97,7 @@ fn main() -> Result<(), Error> {
 
     let no_interactive = matches.get_flag("no-interactive");
 
-    let site = if let Some(site) = matches.get_one::<&str>("site") {
+    let site = if let Some(site) = matches.get_one::<String>("site") {
         site.to_string()
     } else if let Some(site) = default_site {
         site
@@ -110,7 +110,7 @@ fn main() -> Result<(), Error> {
     };
     debug!("site: {}", site);
 
-    let auth = if let Some(password) = matches.get_one::<&str>("password") {
+    let auth = if let Some(password) = matches.get_one::<String>("password") {
         neo::site::Auth::Password(neo::site::Password {
             user: site,
             password: password.to_string(),
@@ -156,9 +156,9 @@ fn main() -> Result<(), Error> {
             let root_path = { app_config.site_root };
 
             let file_str = matches
-                .get_one::<&str>("FILE")
+                .get_one::<String>("FILE")
                 .expect("the required paramter FILE was somehow none");
-            let path_str = match matches.get_one::<&str>("PATH") {
+            let path_str = match matches.get_one::<String>("PATH") {
                 Some(s) => s.to_string(),
                 None => match root_path {
                     Some(root_path) => {
@@ -179,7 +179,7 @@ fn main() -> Result<(), Error> {
             let root_path = { app_config.site_root };
 
             let path_str = matches
-                .get_one::<&str>("PATH")
+                .get_one::<String>("PATH")
                 .expect("the required paramter PATH was somehow none");
 
             info!("delete: {}", path_str);
