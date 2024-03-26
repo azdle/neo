@@ -11,14 +11,14 @@ edition = "2021"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-reqwest = { version = "0.11", features = ["blocking", "multipart", "json"] }
+reqwest = { version = "0.12", features = ["blocking", "multipart", "json"] }
 thiserror = "1"
 anyhow = "1"
 clap = "4"
 log = "0.4"
-pretty_env_logger = "0.4"
-config = { version = "0.13", default-features = false, features = [ "toml" ] }
-directories = "4.0"
+pretty_env_logger = "0.5"
+config = { version = "0.14", default-features = false, features = [ "toml" ] }
+directories = "5.0"
 rpassword = "7.0"
 rprompt = "2.0"
 
